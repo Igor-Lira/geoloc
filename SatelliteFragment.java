@@ -36,11 +36,17 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
+import com.jjoe64.graphview.series.DataPointInterface;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.jjoe64.graphview.series.OnDataPointTapListener;
 import com.jjoe64.graphview.series.PointsGraphSeries;
+import com.jjoe64.graphview.series.Series;
+
+import java.util.Objects;
 
 import fr.ifsttar.geoloc.geolocpvt.R;
 
@@ -48,9 +54,9 @@ import fr.ifsttar.geoloc.geolocpvt.R;
  * the fragment of skyplot of the satellites
  */
 public class SatelliteFragment extends Fragment {
-    private PointsGraphSeries<DataPoint> series;
+
+    private PointsGraphSeries<DataPoint> satellitePositionOnSyplot;
     private GraphView graph;
-    private View viewSkyplot;
 
     //defining the xml for the fragment
     @Nullable
@@ -59,30 +65,11 @@ public class SatelliteFragment extends Fragment {
 
         View view = inflater.inflate(R.layout.fragment_satellite, null);
 
-         this.graph = (GraphView) view.findViewById(R.id.graph);
+        this.graph = (GraphView) view.findViewById(R.id.graph);
 
-        graph.getViewport().setYAxisBoundsManual(true);
-        graph.getViewport().setXAxisBoundsManual(true);
+        defaultGraphic();
 
-        graph.getViewport().setMinX(-270);
-        graph.getViewport().setMaxX(90);
-        graph.getViewport().setMinY(-180);
-        graph.getViewport().setMaxY(0);
-
-       // Drawable image = ContextCompat.getDrawable(this, R.drawable.common_google_signin_btn_icon_dark);
-        graph.setBackground(image);
-
-
-
-        this.series = new PointsGraphSeries<>(new DataPoint[]{
-                new DataPoint(1, 2),
-                new DataPoint(1, 0)
-        });
-             graph.addSeries(series);
-             series.setShape(PointsGraphSeries.Shape.POINT);
-
-
-
+        refreshData();
 
         return view;
 
@@ -100,17 +87,67 @@ public class SatelliteFragment extends Fragment {
             @Override
             public void run() {
                 refreshPointsToPlot();
+
+                //We change the shape of the points:
+                satellitePositionOnSyplot.setShape(PointsGraphSeries.Shape.POINT);
+
+                // If the user wants to know about one satellite, they click and it displays some information:
+                satellitePositionOnSyplot.setOnDataPointTapListener(new OnDataPointTapListener() {
+                    @Override
+                    public void onTap(Series series, DataPointInterface dataPoint) {
+                        Toast.makeText(SatelliteFragment.this.getActivity(), "The satellite position is : "+dataPoint, Toast.LENGTH_SHORT).show();
+                    }
+                });
+
             }
         });
     }
-    public PointsGraphSeries<DataPoint> refreshPointsToPlot()
+
+    /**
+     * refresh the data points to plot in the graph through the data we get about satellite position
+     * x is the elevation
+     * y is the azimuth
+     */
+    public void refreshPointsToPlot()
     {
-        this.series = new PointsGraphSeries<>(new DataPoint[]{
-                new DataPoint(1, 2),
-                new DataPoint(1, 0)
+        //We need to get the Data from the site and put here MONGI ::
+        this.satellitePositionOnSyplot = new PointsGraphSeries<>(new DataPoint[]{
+                new DataPoint(-10, 20),
+                new DataPoint(50, 50)
         });
-        Log.d("deu bom","deu bom");
-        return this.series;
+        graph.addSeries(satellitePositionOnSyplot);
+
+    }
+
+    /**
+     * Initialize the graphic: one circle as the border and we change the range of the axis.
+     * We may change the name of the axis and put some legends and design
+     */
+    public void defaultGraphic () {
+
+        this.graph.getViewport().setYAxisBoundsManual(true);
+        this.graph.getViewport().setXAxisBoundsManual(true);
+
+        this.graph.getViewport().setMinX(-100);
+        this.graph.getViewport().setMaxX(100);
+        this.graph.getViewport().setMinY(-100);
+        this.graph.getViewport().setMaxY(100);
+
+      //  this.graph.getViewport().s
+
+        //Draw the circle border, we need two fonctions:
+        LineGraphSeries<DataPoint> seriesBorder1 = new LineGraphSeries<DataPoint>();
+        LineGraphSeries<DataPoint> seriesBorder2 = new LineGraphSeries<DataPoint>();
+        double x = -90, y;
+        for (int i = 0; i< 1801; i++)
+        {
+            y =  Math.sqrt(8100 - Math.pow(x,2));
+            seriesBorder1.appendData(new DataPoint(x,y), true, 4000);
+            seriesBorder2.appendData(new DataPoint(x,-y),true, 4000);
+            x += 0.1;
+        }
+        this.graph.addSeries(seriesBorder1);
+        this.graph.addSeries(seriesBorder2);
 
     }
 }
