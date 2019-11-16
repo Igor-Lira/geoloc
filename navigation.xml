@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_monitor"
+        android:icon="@drawable/ic_monitor_black_24dp"
+        android:title="@string/title_monitor" />
+
+    <!--
+    <item
+    android:id="@+id/navigation_pseudorange"
+    android:icon="@drawable/ic_pseudorange_black_24dp"
+    android:title="@string/title_pseudorange" />
+    -->
+
+    <item
+        android:id="@+id/navigation_stream"
+        android:icon="@drawable/ic_pseudorange_black_24dp"
+        android:title="@string/title_stream" />
+    <item
+        android:id="@+id/navigation_satellite"
+        android:icon="@drawable/ic_satellite_black_24dp"
+        android:title="@string/title_satellite" />
+
+    <item
+        android:id="@+id/navigation_map"
+        android:icon="@drawable/ic_map_black_24dp"
+        android:title="@string/title_map"/>
+
+
+
+    <!--
+        <item
+        android:id="@+id/navigation_reference"
+        android:icon="@drawable/ic_satellite_black_24dp"
+        android:title="@string/title_reference" />
+    <item
+        android:id="@+id/navigation_logger"
+        android:icon="@drawable/ic_file_black_24dp"
+        android:title="@string/title_files"/>
+        -->
+
+    <item
+        android:id="@+id/navigation_options"
+        android:icon="@drawable/ic_settings_black_24dp"
+        android:title="@string/title_options"/>
+
+</menu>
