@@ -46,6 +46,13 @@ import com.jjoe64.graphview.series.OnDataPointTapListener;
 import com.jjoe64.graphview.series.PointsGraphSeries;
 import com.jjoe64.graphview.series.Series;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
+
 import java.util.Objects;
 
 import fr.ifsttar.geoloc.geolocpvt.R;
@@ -110,11 +117,45 @@ public class SatelliteFragment extends Fragment {
      */
     public void refreshPointsToPlot()
     {
-        //We need to get the Data from the site and put here MONGI ::
-        this.satellitePositionOnSyplot = new PointsGraphSeries<>(new DataPoint[]{
-                new DataPoint(-10, 20),
-                new DataPoint(50, 50)
-        });
+
+        try {
+            //We need to get the Data from the site and put here MONGI ::
+            // Make a URL to the web page                                       Sat ID/ Observer Position /     Personal key used to access data
+            URL url = new URL("https://www.n2yo.com/rest/v1/satellite/positions/44231/41.702/-76.014/0/1/&apiKey=39HSPE-NK2D2G-QT3PTS-48IH");
+            // Get the input stream through URL Connection
+            URLConnection con = url.openConnection();
+
+
+            InputStream is =con.getInputStream();
+            // Once you have the Input Stream
+            // I'll use a reader and output the text content to System.out.
+
+
+
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+
+            String line = null;
+
+            // read each line and write to System.out
+            while ((line = br.readLine()) != null) {
+                if (line.contains("azimuth")) {
+                    Double a,b;
+                    a=Double.valueOf(line.substring(9+line.indexOf("azimuth"),line.indexOf("azimuth")+14));
+                    b=Double.valueOf(line.substring(11+line.indexOf("elevation"),line.indexOf("elevation")+16));
+                    this.satellitePositionOnSyplot = new PointsGraphSeries<>(new DataPoint[]{
+                            new DataPoint(a, b),
+                            // new DataPoint(a, b)
+                    });
+                };
+
+            }
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+        }
+
+
         graph.addSeries(satellitePositionOnSyplot);
 
     }
@@ -133,7 +174,7 @@ public class SatelliteFragment extends Fragment {
         this.graph.getViewport().setMinY(-100);
         this.graph.getViewport().setMaxY(100);
 
-      //  this.graph.getViewport().s
+        //  this.graph.getViewport().s
 
         //Draw the circle border, we need two fonctions:
         LineGraphSeries<DataPoint> seriesBorder1 = new LineGraphSeries<DataPoint>();
