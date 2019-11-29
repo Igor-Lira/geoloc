@@ -26,6 +26,8 @@
 package fr.ifsttar.geoloc.geolocpvt.fragments;
 
 import android.graphics.drawable.Drawable;
+import android.location.GnssNavigationMessage;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Debug;
 import android.support.annotation.NonNull;
@@ -46,18 +48,40 @@ import com.jjoe64.graphview.series.OnDataPointTapListener;
 import com.jjoe64.graphview.series.PointsGraphSeries;
 import com.jjoe64.graphview.series.Series;
 
+import org.gogpsproject.ephemeris.GNSSEphemeris;
+import org.gogpsproject.positioning.TopocentricCoordinates;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLConnection;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
+import fr.ifsttar.geoloc.geoloclib.Coordinates;
+import fr.ifsttar.geoloc.geoloclib.Utils;
+import fr.ifsttar.geoloc.geoloclib.satellites.GNSSObservation;
 import fr.ifsttar.geoloc.geolocpvt.R;
 
+//import org.gogpsproject.positioning.Coordinates;
 /**
  * the fragment of skyplot of the satellites
  */
 public class SatelliteFragment extends Fragment {
 
-    private PointsGraphSeries<DataPoint> satellitePositionOnSyplot;
+    //From Main activity:
+    private HashMap<String, GNSSEphemeris> satelliteEphemeris;
+
+    private PointsGraphSeries<DataPoint> satellitePositionOnSyplot ;
     private GraphView graph;
 
+    private ArrayList <SatelliteSkyPlot> satelliteSkyPlots; // faire un hashmap
     //defining the xml for the fragment
     @Nullable
     @Override
@@ -86,18 +110,22 @@ public class SatelliteFragment extends Fragment {
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                refreshPointsToPlot();
-
-                //We change the shape of the points:
-                satellitePositionOnSyplot.setShape(PointsGraphSeries.Shape.POINT);
+                  refreshSatellitesInformation();
+                // refreshPointsToPlot();
+                //   plotSkyplot ();
 
                 // If the user wants to know about one satellite, they click and it displays some information:
-                satellitePositionOnSyplot.setOnDataPointTapListener(new OnDataPointTapListener() {
-                    @Override
-                    public void onTap(Series series, DataPointInterface dataPoint) {
-                        Toast.makeText(SatelliteFragment.this.getActivity(), "The satellite position is : "+dataPoint, Toast.LENGTH_SHORT).show();
-                    }
-                });
+                if (satellitePositionOnSyplot != null)
+                {
+                    satellitePositionOnSyplot.setOnDataPointTapListener(new OnDataPointTapListener() {
+                        @Override
+                        //bug: If we try to tap while the graph is changing with new data, we dont recive the message, so we must stop the graph for few seconds
+                        public void onTap(Series series, DataPointInterface dataPoint) {
+                            Toast.makeText(SatelliteFragment.this.getActivity(), "The satellite position is : "+dataPoint, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+                }
 
             }
         });
@@ -110,12 +138,50 @@ public class SatelliteFragment extends Fragment {
      */
     public void refreshPointsToPlot()
     {
-        //We need to get the Data from the site and put here MONGI ::
+        graph.removeSeries(this.satellitePositionOnSyplot); // we refresh the graph if we have new points, otherwise we keep it ( TODO)
+
+        try {
+            // Make a URL to the web page                                       Sat ID/ Observer Position /     Personal key used to access data
+           URL url = new URL("https://www.n2yo.com/rest/v1/satellite/positions/44231/41.702/-76.014/0/1/&apiKey=39HSPE-NK2D2G-QT3PTS-48IH");
+            // Get the input stream through URL Connection
+            //URLConnection con = url.openConnection();
+            Downloader d = new Downloader();
+            d.execute("https://www.n2yo.com/rest/v1/satellite/positions/44231/41.702/-76.014/0/1/&apiKey=39HSPE-NK2D2G-QT3PTS-48IH");
+            try
+            {
+                String s = (String)d.get();
+                String aS, bS;
+                aS = s.substring(s.indexOf("a:") + 2,s.indexOf("a:")+ 7);
+                bS = s.substring(s.indexOf("b:") + 2,s.indexOf("b:") + 7);
+                Log.i("heree sat",bS);
+              //  this.azimuth = Double.parseDouble(aS);
+               //  this.elevation = Double.parseDouble(bS);
+               // Log.i("heree sat",a);
+
+
+            }catch (Exception e)
+            {
+                Log.i("error", "erroreer");
+            }
+/*
+            this.satellitePositionOnSyplot = new PointsGraphSeries<>(new DataPoint[]{
+                    new DataPoint(-10, 20),
+                    new DataPoint(this.azimuth, this.elevation)
+
+ */
+        }
+        catch(IOException e) {
+            e.printStackTrace();
+            this.satellitePositionOnSyplot = new PointsGraphSeries<>(new DataPoint[]{
+                    new DataPoint(-10, 20),
+                    new DataPoint(50, 50),
+            });
+        }
         this.satellitePositionOnSyplot = new PointsGraphSeries<>(new DataPoint[]{
                 new DataPoint(-10, 20),
-                new DataPoint(50, 50)
+             //   new DataPoint(this.azimuth, 0),
         });
-        graph.addSeries(satellitePositionOnSyplot);
+        graph.addSeries(this.satellitePositionOnSyplot);
 
     }
 
@@ -133,7 +199,7 @@ public class SatelliteFragment extends Fragment {
         this.graph.getViewport().setMinY(-100);
         this.graph.getViewport().setMaxY(100);
 
-      //  this.graph.getViewport().s
+        //  this.graph.getViewport().s
 
         //Draw the circle border, we need two fonctions:
         LineGraphSeries<DataPoint> seriesBorder1 = new LineGraphSeries<DataPoint>();
@@ -149,5 +215,172 @@ public class SatelliteFragment extends Fragment {
         this.graph.addSeries(seriesBorder1);
         this.graph.addSeries(seriesBorder2);
 
+        this.satellitePositionOnSyplot = new PointsGraphSeries<DataPoint> ();
+    }
+
+    public void refreshSatellitesInformation () {
+        Bundle bundle;
+        bundle = getArguments();
+        if (getArguments() != null) {
+
+            if (bundle.getSerializable("TrackedObservations") != null) {
+
+                HashMap<String, GNSSObservation> gnssObservation = (HashMap<String, GNSSObservation>) bundle.getSerializable("TrackedObservations");
+
+                for (HashMap.Entry<String, GNSSObservation> entry : gnssObservation.entrySet()) {
+
+                    GNSSObservation current = entry.getValue();
+
+                    if (bundle.getSerializable("ComputedPosition") != null) {
+                        //Coordinates userCord = (Coordinates) bundle.getSerializable("ComputedPosition");
+                        if (bundle.getSerializable("ComputedPosition") != null) {
+
+                            try {
+                                Coordinates userCord = (Coordinates) bundle.getSerializable("ComputedPosition");
+                                TopocentricCoordinates teste = new TopocentricCoordinates();
+                                org.gogpsproject.positioning.Coordinates userCord_transformed = new org.gogpsproject.positioning.Coordinates();
+                                userCord_transformed.setENU(userCord.getE(), userCord.getN(), userCord.getU());
+                                org.gogpsproject.positioning.Coordinates SatCoord_transformed = new org.gogpsproject.positioning.Coordinates();
+                                try {
+                                    current.getSatellitePosition().getSatCoordinates().setENUvelocity();
+                                    userCord.setENUvelocity();
+                                    SatCoord_transformed.setENU(current.getSatellitePosition().getSatCoordinates().getE(),current.getSatellitePosition().getSatCoordinates().getN(), current.getSatellitePosition().getSatCoordinates().getU());
+                                    SatCoord_transformed.setENU(userCord.getE(), userCord.getN(), userCord.getU());
+                                    teste.computeTopocentric(userCord_transformed, SatCoord_transformed);
+                                    teste.getAzimuth();
+
+                                }catch (NullPointerException e )
+                                {
+
+                                }
+
+                                Log.i ("testea",Double.toString( teste.getAzimuth()));
+
+
+                                Log.i ("testea","testee");
+
+                            }catch (NullPointerException e)
+                            {
+                                Log.e("nullll","null");
+                            }
+
+
+                        }
+                       try {
+                             current.getSatellitePosition().computeSatellitePosition(current.getTransmissionTime());
+
+                             this.satelliteSkyPlots.add(new SatelliteSkyPlot(current.getId(), 0, current.getSatellitePosition().getSatElevation(), current.getConstellation()));
+                             Log.i("igorSAt", this.satelliteSkyPlots.toString());
+                        }catch (NullPointerException e)
+                       {
+                           Log.e ("satNull","null excepition to take satellite data");
+                       }
+
+
+                    }
+                }
+            }
+        }
+    }
+
+    public void plotSkyplot ()
+    {
+        if (!this.satelliteSkyPlots.isEmpty())
+        {
+            for (SatelliteSkyPlot current : this.satelliteSkyPlots)
+            {
+                this.satellitePositionOnSyplot.appendData(current.getDataPoint(),false,50);
+            }
+            satellitePositionOnSyplot.setShape(PointsGraphSeries.Shape.POINT);
+            graph.addSeries(satellitePositionOnSyplot);
+        }
+
+    }
+
+}
+class Downloader extends AsyncTask <String, Void, String> {
+
+    protected String doInBackground(String... urls) {
+
+        String resultat = null;
+        try {
+
+            URL url = new URL(urls[0]);
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            InputStream in = con.getInputStream();
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(in));
+            String line = "";
+
+            while ((line = br.readLine()) != null) {
+                if (line.contains("azimuth")) {
+                    Double a, b;
+                    a = Double.valueOf(line.substring(9 + line.indexOf("azimuth"), line.indexOf("azimuth") + 14));
+                    b = Double.valueOf(line.substring(11 + line.indexOf("elevation"), line.indexOf("elevation") + 16));
+                    resultat = resultat + "a:" + String.valueOf(a) + "b:" + String.valueOf(b);
+                }
+            }
+        } catch (Exception e) {
+            Log.e("Error Connecting to satellite positions", "error");
+        }
+        return resultat;
+    }
+
+}
+class SatelliteSkyPlot {
+    private int id;
+    private double azimuth, elevation, constelation;
+    private DataPoint dataPoint;
+
+    public SatelliteSkyPlot(int id, double azimuth, double elevation, double constelation) {
+        this.id = id;
+        this.azimuth = azimuth;
+        this.elevation = elevation;
+        this.constelation = constelation;
+    }
+
+    public DataPoint getDataPoint() {
+        this.dataPoint = new DataPoint(this.azimuth, this.elevation);
+        return this.dataPoint;
+    }
+
+    public void setDataPoint(DataPoint dataPoint) {
+        this.dataPoint = dataPoint;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public double getAzimuth() {
+        return azimuth;
+    }
+
+    public void setAzimuth(double azimuth) {
+        this.azimuth = azimuth;
+    }
+
+    public double getElevation() {
+        return elevation;
+    }
+
+    public void setElevation(double elevation) {
+        this.elevation = elevation;
+    }
+
+    public double getConstelation() {
+        return constelation;
+    }
+
+    public void setConstelation(double constelation) {
+        this.constelation = constelation;
+    }
+    public String toString ()
+    {
+        return "satellite id: " + this.id + " azimuth: " + this.azimuth + " elevation: " + this.elevation + " Constelation: " + this.constelation;
     }
 }
