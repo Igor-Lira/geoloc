@@ -27,6 +27,7 @@ package fr.ifsttar.geoloc.geolocpvt.fragments;
 
 import android.graphics.drawable.Drawable;
 import android.location.GnssNavigationMessage;
+import android.location.GnssStatus;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Debug;
@@ -80,12 +81,13 @@ public class SatelliteFragment extends Fragment {
 
     private PointsGraphSeries<DataPoint> satellitePositionOnSyplot ;
     private GraphView graph;
-
-    private ArrayList <SatelliteSkyPlot> satelliteSkyPlots; // faire un hashmap
+    private HashMap < Integer, SatelliteSkyPlot> satelliteSkyPlots;
+   // private ArrayList <SatelliteSkyPlot> satelliteSkyPlots; // faire un hashmap
     //defining the xml for the fragment
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+
 
         View view = inflater.inflate(R.layout.fragment_satellite, null);
 
@@ -93,7 +95,7 @@ public class SatelliteFragment extends Fragment {
 
         defaultGraphic();
 
-        refreshData();
+   //    refreshData();
 
         return view;
 
@@ -104,15 +106,17 @@ public class SatelliteFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         refreshData();
+
     }
 
     public void refreshData(){
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                  refreshSatellitesInformation();
+
+                 refreshSatellitesInformation();
                 // refreshPointsToPlot();
-                //   plotSkyplot ();
+                  plotSkyplot ();
 
                 // If the user wants to know about one satellite, they click and it displays some information:
                 if (satellitePositionOnSyplot != null)
@@ -219,13 +223,16 @@ public class SatelliteFragment extends Fragment {
     }
 
     public void refreshSatellitesInformation () {
+
+        this.satelliteSkyPlots = new HashMap<Integer, SatelliteSkyPlot>();
+
         Bundle bundle;
         bundle = getArguments();
         if (getArguments() != null) {
 
-            if (bundle.getSerializable("TrackedObservations") != null) {
+            if (bundle.getSerializable("GnssObservations") != null) {
 
-                HashMap<String, GNSSObservation> gnssObservation = (HashMap<String, GNSSObservation>) bundle.getSerializable("TrackedObservations");
+                HashMap<String, GNSSObservation> gnssObservation = (HashMap<String, GNSSObservation>) bundle.getSerializable("GnssObservations");
 
                 for (HashMap.Entry<String, GNSSObservation> entry : gnssObservation.entrySet()) {
 
@@ -233,6 +240,7 @@ public class SatelliteFragment extends Fragment {
 
                     if (bundle.getSerializable("ComputedPosition") != null) {
                         //Coordinates userCord = (Coordinates) bundle.getSerializable("ComputedPosition");
+                        /*
                         if (bundle.getSerializable("ComputedPosition") != null) {
 
                             try {
@@ -257,7 +265,7 @@ public class SatelliteFragment extends Fragment {
                                 Log.i ("testea",Double.toString( teste.getAzimuth()));
 
 
-                                Log.i ("testea","testee");
+                                Log.i ("entreeei","testee");
 
                             }catch (NullPointerException e)
                             {
@@ -266,18 +274,103 @@ public class SatelliteFragment extends Fragment {
 
 
                         }
-                       try {
-                             current.getSatellitePosition().computeSatellitePosition(current.getTransmissionTime());
+                        */
 
-                             this.satelliteSkyPlots.add(new SatelliteSkyPlot(current.getId(), 0, current.getSatellitePosition().getSatElevation(), current.getConstellation()));
-                             Log.i("igorSAt", this.satelliteSkyPlots.toString());
-                        }catch (NullPointerException e)
-                       {
-                           Log.e ("satNull","null excepition to take satellite data");
-                       }
+
+                        try {
+                            current.getSatellitePosition().computeSatellitePosition(current.getTransmissionTime());
+                            //this.satelliteSkyPlots.add(new SatelliteSkyPlot(current.getId(), 0, current.getSatellitePosition().getSatElevation(), current.getConstellation()));
+                            //this.satelliteSkyPlots.put(current.getId(),a);
+                            Log.i("igorSAt", this.satelliteSkyPlots.toString());
+                        } catch (NullPointerException e) {
+                            Log.e("satNull", "null excepition to take satellite data");
+                        }
 
 
                     }
+                }
+            }
+
+
+            if (bundle.getSerializable("TrackedObservations") != null) {
+
+                HashMap<String, GNSSObservation> gnssObservation = (HashMap<String, GNSSObservation>) bundle.getSerializable("TrackedObservations");
+
+                for (HashMap.Entry<String, GNSSObservation> entry : gnssObservation.entrySet()) {
+
+                    Log.i("entry??", "yes");
+                    GNSSObservation current = entry.getValue();
+/*
+                    try {
+                        Log.i("trackInfoGPS",Double.toString(current.getSatellitePosition().getSatElevation()));
+
+                        SatelliteSkyPlot a = new SatelliteSkyPlot(current.getId(),0,current.getSatellitePosition().getSatElevation(),1);
+
+                        if (!this.satelliteSkyPlots.containsKey(current.getId()))
+                        {
+                            this.satelliteSkyPlots.put(current.getId(),a);
+                        }
+
+                        Log.i("allinfo", a.toString());
+
+                        //  this.graph.addSeries(this.satellitePositionOnSyplot);
+
+                    } catch (NullPointerException e)
+                    {
+                        Log.e("merda","merda");
+                    }
+                    */
+
+                    switch (current.getConstellation()) {
+                        case GnssStatus.CONSTELLATION_GPS:
+                            if (current.getPseudorangeL1() > 0) {
+                                ///  gpsSatellitesTrackL1++;
+                            }
+                            if (current.getPseudorangeL5() > 0) {
+                                // gpsSatellitesTrackL5 ++;
+                            }
+                            try {
+                                Log.i("trackInfoGPS",Double.toString(current.getSatellitePosition().getSatElevation()));
+
+                                SatelliteSkyPlot a = new SatelliteSkyPlot(current.getId(),0,current.getSatellitePosition().getSatElevation(),1);
+
+                                if (!this.satelliteSkyPlots.containsKey(current.getId()))
+                                {
+                                    this.satelliteSkyPlots.put(current.getId(),a);
+                                }
+
+                                Log.i("allinfo", a.toString());
+
+                              //  this.graph.addSeries(this.satellitePositionOnSyplot);
+
+                            } catch (NullPointerException e)
+                            {
+                                Log.e("merda","merda");
+                            }
+
+                            break;
+                        case GnssStatus.CONSTELLATION_GALILEO:
+                            try {
+                                Log.i("trackInfoGALLILIO", Double.toString(current.getSatellitePosition().getSatElevation()));
+                            } catch (NullPointerException e)
+                            {
+                                Log.e("merda","merda");
+                            }
+                            break;
+                        case GnssStatus.CONSTELLATION_BEIDOU:
+                            try {
+                                Log.i("trackInfoBEIDOU", Double.toString(current.getSatellitePosition().getSatElevation()));
+                            } catch (NullPointerException e)
+                            {
+                                Log.e("merda","merda");
+                            }
+
+                            break;
+                    }
+
+                    // Log.i("lool2",Double.toString(current.getSatellitePosition().getSatElevation()));
+                    //Log.i("testefinal2" ,current.getSatellitePosition().getSatCoordinates().toString());
+                    //Log.i("lesinfo2" ," id: " + Integer.toString( current.getId() ) + " c :" + current.getConstellation() );
                 }
             }
         }
@@ -287,8 +380,10 @@ public class SatelliteFragment extends Fragment {
     {
         if (!this.satelliteSkyPlots.isEmpty())
         {
-            for (SatelliteSkyPlot current : this.satelliteSkyPlots)
+
+            for (HashMap.Entry<Integer, SatelliteSkyPlot> satelliteSkyPlotsObs : this.satelliteSkyPlots.entrySet())
             {
+                SatelliteSkyPlot current = satelliteSkyPlotsObs.getValue();
                 this.satellitePositionOnSyplot.appendData(current.getDataPoint(),false,50);
             }
             satellitePositionOnSyplot.setShape(PointsGraphSeries.Shape.POINT);
@@ -337,15 +432,11 @@ class SatelliteSkyPlot {
         this.azimuth = azimuth;
         this.elevation = elevation;
         this.constelation = constelation;
+        this.dataPoint = new DataPoint(this.azimuth, this.elevation);
     }
 
     public DataPoint getDataPoint() {
-        this.dataPoint = new DataPoint(this.azimuth, this.elevation);
         return this.dataPoint;
-    }
-
-    public void setDataPoint(DataPoint dataPoint) {
-        this.dataPoint = dataPoint;
     }
 
     public int getId() {
