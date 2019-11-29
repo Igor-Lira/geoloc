@@ -61,6 +61,7 @@ import fr.ifsttar.geoloc.geoloclib.Utils;
 import fr.ifsttar.geoloc.geoloclib.computations.GNSSPositioning;
 import fr.ifsttar.geoloc.geoloclib.Coordinates;
 import fr.ifsttar.geoloc.geoloclib.satellites.EphemerisGPS;
+import fr.ifsttar.geoloc.geoloclib.satellites.SatellitePositionGNSS;
 import fr.ifsttar.geoloc.geoloclib.streams.StreamEphemerisHandler;
 import fr.ifsttar.geoloc.geoloclib.streams.Streams;
 import fr.ifsttar.geoloc.geolocpvt.fragments.LoggerFragment;
@@ -73,7 +74,9 @@ import fr.ifsttar.geoloc.geolocpvt.fragments.SatelliteFragment;
 import fr.ifsttar.geoloc.geolocpvt.fragments.StreamFragment;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import static android.content.ContentValues.TAG;
@@ -82,6 +85,7 @@ import org.gogpsproject.ephemeris.PreciseCorrection;
 import org.gogpsproject.ephemeris.GNSSEphemeris;
 import org.gogpsproject.ephemeris.GNSSEphemerisCorrections;
 import org.gogpsproject.ephemeris.SatelliteCodeBiases;
+import org.gogpsproject.positioning.SatellitePosition;
 
 /**
  * MainActivity
@@ -218,12 +222,19 @@ public class MainActivity extends AppCompatActivity
             case R.id.navigation_pseudorange:
                 //if item selected equals to pseudorange, fragment to load is equal to PseudorangeFragment
                 fragment = mPseudorangeFragment;
-                bundle.putParcelable("GnssMeasurementsEvent", mGnssMeasurementsEvent);
+0                bundle.putParcelable("GnssMeasurementsEvent", mGnssMeasurementsEvent);
                 bundle.putSerializable("SatelliteEphemeris", satelliteEphemeris);
                 break;*/
 
             case R.id.navigation_satellite:
                 //if item selected equals to satellite, fragment to load is equal to SatelliteFragment
+                // to get all the satellite id
+                try {
+                    //MONGI
+                    bundle.putSerializable("GnssObservations", gnssPositioning.getGnssObservationAllSats());
+                    bundle.putSerializable("TrackedObservations", gnssPositioning.getGnssObservationTrackedSats());
+                    bundle.putSerializable("ComputedPosition", userCoord);
+                }  catch(Exception e) { }
                 fragment = mSatelliteFragment;
                 break;
 
@@ -500,7 +511,8 @@ public class MainActivity extends AppCompatActivity
         // Get satellites positions, either by navigation message or by streams
         if(processingOptions.isStreamsEnabled())
         {
-            getSatPositionFromStreams();
+           // getSatPositionFromStreams();
+            getSatPositionFromNavigationMessage();
         }
         else
         {
@@ -510,11 +522,32 @@ public class MainActivity extends AppCompatActivity
         // Refreshing with last satellite ephemeris and measurements
         gnssPositioning.refreshEphemeris(satelliteEphemeris);
         gnssPositioning.refreshMeasurements(mGnssMeasurementsEvent);
-
-        // Compute a position with current data
         userCoord = gnssPositioning.computeUserPosition();
 
+        // Compute a position with current data
+        /*
+        Iterator hmIterator = satelliteEphemeris.entrySet().iterator();
+        Map.Entry teste = (Map.Entry)hmIterator.next();
+        Log.i("igor aqui",teste.getValue().toString());
+        Log.i("igor 2",teste.getValue().toString());
+         */
+
+        /*
+        while (hmIterator.hasNext()) {
+            Map.Entry teste = (Map.Entry)hmIterator.next();
+            Log.i("igor aqui",teste.toString());
+        }
+
+         */
+        /*
+        double tow = 383400;
+        Options options = new Options();
+        SatellitePositionGNSS satellitePosition = new SatellitePositionGNSS(satelliteEphemeris.get(0), tow, approxUserCoord, options);
+        satellitePosition.computeSatellitePosition(tow);
+        Log.i("igor Satelliteposss", satellitePosition.getSatCoordinates().toString());
         // If results null, something wrong happened and we are discarding the previous measurements
+
+         */
         if(userCoord == null)
         {
             gnssPositioning = new GNSSPositioning();
@@ -710,6 +743,7 @@ public class MainActivity extends AppCompatActivity
                         //if we already have a message from the same satellite
                         if(mMapMessages.get(event.getType()).containsKey(event.getSvid())){
                             //if we already have a message with the same id
+                            Log.i("sateliteaqui",Integer.toString(event.getSvid()));
                             if(mMapMessages.get(event.getType()).get(event.getSvid()).containsKey(event.getSubmessageId())){
                                 //we replace by new message
                                 mMapMessages.get(event.getType()).get(event.getSvid()).replace(event.getSubmessageId(),event);
