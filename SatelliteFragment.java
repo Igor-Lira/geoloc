@@ -75,6 +75,7 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
+import java.lang.Math.*;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -229,7 +230,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
 
     public void refreshSatellitesInformation () {
 
-        this.satelliteSkyPlots = new TreeMap<Integer, SatelliteSkyPlot>(new IDComparator());
+        this.satelliteSkyPlots = new TreeMap<Integer, SatelliteSkyPlot>(new XComparator());
 
         this.bundle = getArguments();
 
@@ -432,14 +433,14 @@ class SatelliteSkyPlot {
         return "satellite id: " + this.id + " azimuth: " + this.azimuth + " elevation: " + this.elevation + " Constelation: " + this.constelation + "In skyplot, x = " + this.getDataPoint().getX() + " y = " + this.getDataPoint().getY();
     }
 }
-class IDComparator implements Comparator {
+class XComparator implements Comparator {
     public int compare(Object o1, Object o2) {
         SatelliteSkyPlot s1 = (SatelliteSkyPlot) o1;
         SatelliteSkyPlot s2 = (SatelliteSkyPlot) o2;
 
-        if (s1.getAzimuth() == s2.getAzimuth())
+        if (s1.getAzimuth()*Math.cos(s1.getElevation()) == s2.getAzimuth()*Math.cos(s2.getElevation()) )
             return 0;
-        else if (s1.getAzimuth() > s2.getAzimuth())
+        else if (s1.getAzimuth()*Math.cos(s1.getElevation()) > s2.getAzimuth()*Math.cos(s2.getElevation()) )
             return 1;
         else
             return -1;
