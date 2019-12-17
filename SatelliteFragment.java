@@ -39,11 +39,13 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.jjoe64.graphview.GraphView;
@@ -65,27 +67,26 @@ import fr.ifsttar.geoloc.geoloclib.Coordinates;
 import fr.ifsttar.geoloc.geoloclib.satellites.GNSSObservation;
 import fr.ifsttar.geoloc.geolocpvt.R;
 
+import static android.content.Context.LAYOUT_INFLATER_SERVICE;
+
 /**
  * the fragment of skyplot of the satellites
  */
 public class SatelliteFragment extends Fragment implements SensorEventListener{
 
 
-    private PointsGraphSeries<DataPoint> satellitePositionOnSyplot ;
+    private PointsGraphSeries<DataPoint> satellitePositionOnSkyplot ;
     private GraphView graph;
     private HashMap < Integer, SatelliteSkyPlot> satelliteSkyPlots;
-    private TreeMap< Double, DataPoint> dataPointToPlotTree ;
     private Bundle bundle;
-    //private ArrayList <SatelliteSkyPlot> satelliteSkyPlots; // faire un hashmap
-    //defining the xml for the fragment
     @Nullable
-
     public SensorManager sensorManager;
     public Sensor mRotationVectorSensor;
     private ImageView dubBus;
     private Sensor accelerometer;
     private Sensor magnetometer;
     static public float OritationPortable;
+    private View view;
 
     private float[] mLastAccelerometer = new float[3];
     private float[] mLastMagnetometer = new float[3];
@@ -94,9 +95,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
 
     private float[] mR = new float[9];
     private float[] mOrientation = new float[3];
-
     private boolean isSatelliteDispalyed = false;
-
 
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
 
@@ -107,12 +106,12 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
 
         this.graph = (GraphView) view.findViewById(R.id.graph);
 
-        defaultGraphic();
 
         this.sensorManager = (SensorManager)getContext().getSystemService(Context.SENSOR_SERVICE);
         this.mRotationVectorSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         this.accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         this.magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        this.view = view;
 
         view.setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -125,6 +124,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
                 return false;
             }
         });
+       // onButtonShowPopupWindowClick();
         return view;
 
     }
@@ -141,41 +141,20 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                //changeGraphic();
-                 refreshSatellitesInformation();
-                // refreshPointsToPlot();
+                 refreshSatellitesData();
+                 setGraphicDefault();
                   plotSkyplot ();
-                // If the user wants to know about one satellite, they click and it displays some information:
-                if (satellitePositionOnSyplot != null)
+                if (satellitePositionOnSkyplot != null)
                 {
                       List<Series> list = graph.getSeries();
                       for (Series s : list) {
                           s.setOnDataPointTapListener(new OnDataPointTapListener() {
                               @Override
-                              //bug: If we try to tap while the graph is changing with new data, we dont recive the message, so we must stop the graph for few seconds
                               public void onTap(Series series, DataPointInterface dataPoint) {
                                   Toast.makeText(SatelliteFragment.this.getActivity(), "The satellite position is : " + dataPoint, Toast.LENGTH_SHORT).show();
                                   try {
                                       SatelliteSkyPlot satelliteSkyPlot = findSatellitebyDataPoint(dataPoint);
-                                      displaySatelliteInfo(satelliteSkyPlot,dataPoint);
-                                      /*
-                                      TextView satelliteID = getView().findViewById(R.id.SatelliteID);
-                                      TextView satelliteAzimuth = getView().findViewById(R.id.SatelliteAzimuth);
-                                      TextView satelliteElevation = getView().findViewById(R.id.SatelliteElevattion);
-                                      TextView satelliteConstelation = getView().findViewById(R.id.SatelliteConstelation);
-
-                                      satelliteID.setVisibility(View.VISIBLE);
-                                      satelliteAzimuth.setVisibility(View.VISIBLE);
-                                      satelliteElevation.setVisibility(View.VISIBLE);
-                                      satelliteConstelation.setVisibility(View.VISIBLE);
-
-                                      satelliteID.setText( "Id: ");
-                                      satelliteAzimuth.setText("Azimuth:"); //ToString("#0.000").Substring(0, 5);
-                                      satelliteElevation.setText("Elevation: ");
-                                      satelliteConstelation.setText( "Constelation: ");
-
-                                       */
-
+                                      displaySatelliteInfo(satelliteSkyPlot, dataPoint);
                                   }
                                  catch (NullPointerException e){};
                               }
@@ -192,7 +171,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
      * Initialize the graphic: one circle as the border and we change the range of the axis.
      * We may change the name of the axis and put some legends and design
      */
-    public void defaultGraphic () {
+    public void setGraphicDefault () {
 
         this.graph.getViewport().setYAxisBoundsManual(true);
         this.graph.getViewport().setXAxisBoundsManual(true);
@@ -220,7 +199,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
 
  */
 
-        this.satellitePositionOnSyplot = new PointsGraphSeries<DataPoint> ();
+        this.satellitePositionOnSkyplot = new PointsGraphSeries<DataPoint> ();
         graph.setScaleX(graph.getScaleX()-0.02f);
         graph.setScaleY(graph.getScaleX()/1.3f);
         graph.getGridLabelRenderer().setVerticalLabelsVisible(false);
@@ -230,7 +209,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
     }
 
 
-    public void refreshSatellitesInformation () {
+    public void refreshSatellitesData () {
 
      this.satelliteSkyPlots = new HashMap<Integer, SatelliteSkyPlot>();
 
@@ -369,6 +348,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
         }
 
     }
+    /*
     public void displaySatelliteInfo (SatelliteSkyPlot satelliteSkyPlot, DataPointInterface dataPoint)
     {
         try {
@@ -384,7 +364,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
             satelliteConstelation.setVisibility(View.VISIBLE);
 
             satelliteID.setText( "Id: " + satelliteSkyPlot.getId());
-            satelliteAzimuth.setText("Azimuth:" + satelliteSkyPlot.getAzimuth()); //ToString("#0.000").Substring(0, 5);
+            satelliteAzimuth.setText("Azimuth:" + ((Double)satelliteSkyPlot.getAzimuth()).toString().substring(0,4)); //ToString("#0.000").Substring(0, 5);
             satelliteElevation.setText("Elevation: "+ satelliteSkyPlot.getElevation() );
             satelliteConstelation.setText( "Constelation: " + satelliteSkyPlot.getConstelation());
 
@@ -393,6 +373,8 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
         }
         catch (NullPointerException e){};
     }
+
+     */
     public void stopDisplaySatelliteInfo ()
     {
         TextView satelliteID = getView().findViewById(R.id.SatelliteID);
@@ -436,13 +418,36 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
         if (mLastAccelerometerSet && mLastMagnetometerSet) {
             SensorManager.getRotationMatrix(mR, null, mLastAccelerometer, mLastMagnetometer);
             SensorManager.getOrientation(mR, mOrientation);
+            /*
             Log.i("OrientationTestActivity", String.format("Orientation: %f, %f, %f",
                     mOrientation[0], mOrientation[1], mOrientation[2]));
+
+             */
             SatelliteFragment.OritationPortable = mOrientation[0];
-            dubBus.setRotation((float)Math.toDegrees((double)OritationPortable));
+            dubBus.setRotation(-(float)Math.toDegrees((double)OritationPortable));
             // mOrientation[2] = Roll, angle of rotation about the y axis. This value represents the angle between a plane perpendicular to the device's screen and a plane perpendicular to the ground. Assuming that the bottom edge of the device faces the user and that the screen is face-up, tilting the left edge of the device toward the ground creates a positive roll angle. The range of values is -π/2 to π/2.
         }
     }
+    public void displaySatelliteInfo (SatelliteSkyPlot satelliteSkyPlot, DataPointInterface dataPoint) {
+
+        LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+
+        PopupWindow pw = new PopupWindow(inflater.inflate(R.layout.fragment_satellite_popupinfo, null, false),800,500, true);
+
+        pw.showAtLocation(view, Gravity.NO_GRAVITY, 100, 1100);
+
+        TextView satelliteID = pw.getContentView().findViewById(R.id.SatelliteID);
+        TextView satelliteAzimuth = pw.getContentView().findViewById(R.id.SatelliteAzimuth);
+        TextView satelliteElevation =  pw.getContentView().findViewById(R.id.SatelliteElevattion);
+        TextView satelliteConstelation = pw.getContentView().findViewById(R.id.SatelliteConstelation);
+
+        satelliteID.setText( "Id: " + satelliteSkyPlot.getId());
+        satelliteAzimuth.setText("Azimuth:" + satelliteSkyPlot.getAzimuth()); //ToString("#0.000").Substring(0, 5);
+        satelliteElevation.setText("Elevation: "+ satelliteSkyPlot.getElevation() );
+        satelliteConstelation.setText( "Constelation: " + satelliteSkyPlot.getConstelation());
+
+    }
+
     static final float ALPHA = 0.1f;
     protected float[] lowPass( float[] input, float[] output ) {
         if ( output == null ) return input;
@@ -454,15 +459,16 @@ public class SatelliteFragment extends Fragment implements SensorEventListener{
     }
 }
 
+
 class SatelliteSkyPlot {
     private int id;
     private double azimuth, elevation, constelation;
     private DataPoint dataPoint;
     private double orientationPortable;
 
-    public void setOrientationPortable(double orientationPortable) {
+    public void setDataPointByOrientationPortable() {
         this.orientationPortable =  SatelliteFragment.OritationPortable;
-        this.dataPoint = new DataPoint(elevation*Math.cos(Math.toRadians(azimuth)+orientationPortable), elevation*Math.sin(Math.toRadians(azimuth)+orientationPortable));
+        this.dataPoint = new DataPoint(elevation*Math.cos(Math.toRadians(azimuth)-orientationPortable), elevation*Math.sin(Math.toRadians(azimuth)-orientationPortable));
     }
 
     public SatelliteSkyPlot(int id, double azimuth, double elevation, double constelation) {
@@ -472,10 +478,11 @@ class SatelliteSkyPlot {
         this.constelation = constelation;
         this.orientationPortable = SatelliteFragment.OritationPortable;
         // Azimuth is the angle and Elevation is the radius. Polar -> Cartesian : x = r.cos = Elevation. cos(Azimuth)// y = r.sen = Elevation.sin(Azimuth)
-        this.dataPoint = new DataPoint(elevation*Math.cos(Math.toRadians(azimuth)+orientationPortable), elevation*Math.sin(Math.toRadians(azimuth)+orientationPortable));
+        this.dataPoint = new DataPoint(elevation*Math.cos(Math.toRadians(azimuth)-orientationPortable), elevation*Math.sin(Math.toRadians(azimuth)-orientationPortable));
     }
 
     public DataPoint getDataPoint() {
+        setDataPointByOrientationPortable();
         return this.dataPoint;
     }
 
