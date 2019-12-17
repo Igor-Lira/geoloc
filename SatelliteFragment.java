@@ -407,62 +407,7 @@ public class SatelliteFragment extends Fragment implements SensorEventListener {
         return output;
     }
 }
-class SatelliteSkyPlot {
-    private int id;
-    private double azimuth, elevation, constellation;
-    private DataPoint dataPoint;
-    private double orientationPortable;
 
-    /** Changes data point according to portable orientation*/
-
-    public void setDataPointByOrientationPortable(float orientation) {
-        this.orientationPortable = orientation;
-        this.dataPoint = new DataPoint(elevation * Math.cos(Math.toRadians(azimuth) + orientationPortable), elevation * Math.sin(Math.toRadians(azimuth) + orientationPortable));
-    }
-
-    public SatelliteSkyPlot(int id, double azimuth, double elevation, double constellation, float orientation) {
-        this.id = id;
-        this.azimuth = azimuth;
-        this.elevation = elevation;
-        this.constellation = constellation;
-        this.orientationPortable = orientation;
-        // Azimuth is the angle and Elevation is the radius. Polar -> Cartesian : x = r.cos = Elevation. cos(Azimuth)// y = r.sen = Elevation.sin(Azimuth)
-        this.dataPoint = new DataPoint(elevation * Math.cos(Math.toRadians(azimuth) + orientationPortable), elevation * Math.sin(Math.toRadians(azimuth) + orientationPortable));
-    }
-
-    public DataPoint getDataPoint(float orientation) {
-        setDataPointByOrientationPortable(orientation);
-        return this.dataPoint;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public double getAzimuth() {
-        return azimuth;
-    }
-
-    public double getElevation() {
-        return elevation;
-    }
-
-
-    public double getConstellation() {
-        return constellation;
-    }
-
-
-    public String toString() {
-        return "satellite id: " + this.id + " azimuth: " + this.azimuth + " elevation: " + this.elevation + " Constelation: " + this.constellation + "In skyplot, x = " + this.dataPoint.getX() + " y = " + this.dataPoint.getY();
-    }
-
-
-}
 
 
 
